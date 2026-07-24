@@ -501,7 +501,8 @@ function montarHtml(rows, outName){
   body = replaceAllStr(body, '{LAST_UPDATE_LABEL}', lastUpdateLabel);
   body = replaceAllStr(body, '{WEEK_OPTIONS_HTML}', weekOptionsHtml);
 
-  let jsAfterData = JS_AFTER_DATA_TEMPLATE;
+let jsAfterData = JS_AFTER_DATA_TEMPLATE;
+  jsAfterData = jsAfterData.replace("<strong>${total.toLocaleString()}</strong> processes · ", "");
   jsAfterData = replaceAllStr(jsAfterData, '{WEEK_RANGES_JSON}', weekRangesJson);
   jsAfterData = replaceAllStr(jsAfterData, '{MONTHS_JSON}', monthsJson);
   jsAfterData = replaceAllStr(jsAfterData, '{MLABELS_JSON}', mlabelsJson);
