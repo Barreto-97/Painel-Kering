@@ -630,7 +630,7 @@ let body = HTML_BODY_TEMPLATE;
     const bNames = ['Saint Laurent', 'Gucci', 'Bottega Veneta', 'Balenciaga'];
     const metrics = ['inv_gl', 'gl_arr', 'arr_id', 'id_cc', 'cc_nf', 'nf_pod'];
     const colors = ['#0c4a6e', '#1d4ed8', '#0284c7', '#64748b', '#94a3b8', '#cbd5e1'];
-    const labels = ['Invoice receipt x GL', 'GL x ARR', 'ARR x DUIMP', 'DUIMP x CC', 'CC x NF ISSUED', 'NF x POD'];
+    const labels = ['Invoice x GL', 'GL x ARR', 'ARR x Duimp', 'Duimp x CC', 'CC x NF', 'NF x POD'];
 
     let bData = {};
     bKeys.forEach(k => bData[k] = { inv_gl:[], gl_arr:[], arr_id:[], id_cc:[], cc_nf:[], nf_pod:[] });
@@ -674,23 +674,23 @@ let body = HTML_BODY_TEMPLATE;
     let w1 = 800, leftM = 120, rightM = 20, chartW = w1 - leftM - rightM;
 
     // ----- DESENHA CHART 1 (Barras Empilhadas) & TABELA -----
-    let svg1 = '<svg viewBox="0 0 ' + w1 + ' ' + h1 + '" style="width:100%; height:auto; margin-top:10px;">';
+let svg1 = '<svg viewBox="0 0 ' + w1 + ' ' + h1 + '" style="width:100%; height:auto; margin-top:10px;">';
     for(let i=0; i<=5; i++) {
        let x = leftM + (chartW * (i/5));
        svg1 += '<line x1="'+x+'" y1="0" x2="'+x+'" y2="'+(h1-40)+'" stroke="#ffffff" stroke-opacity="0.1" />';
-       svg1 += '<text x="'+x+'" y="'+(h1-25)+'" fill="#a1a1aa" font-size="10" text-anchor="middle">'+Math.round((maxVal*i)/5)+'</text>';
+       svg1 += '<text x="'+x+'" y="'+(h1-25)+'" fill="#7d93b8" font-size="10" font-family="\'DM Mono\', monospace" text-anchor="middle">'+Math.round((maxVal*i)/5)+'</text>';
     }
 
     chart1Data.forEach((d, i) => {
        let y = i * 40 + 10;
-       svg1 += '<text x="'+(leftM - 10)+'" y="'+(y+15)+'" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="end">'+d.name+'</text>';
+       svg1 += '<text x="'+(leftM - 10)+'" y="'+(y+15)+'" fill="#eaf1fb" font-size="10.5" font-family="\'DM Sans\', sans-serif" font-weight="700" text-anchor="end">'+d.name+'</text>';
        let cx = leftM;
        d.vals.forEach((v, j) => {
           if(v <= 0) return;
           let bw = (v/maxVal) * chartW;
           svg1 += '<rect x="'+cx+'" y="'+y+'" width="'+bw+'" height="22" fill="'+colors[j]+'" />';
           if(bw > 16) {
-             svg1 += '<text x="'+(cx + bw/2)+'" y="'+(y+15)+'" fill="#fff" font-size="9" font-weight="bold" text-anchor="middle">'+v.toFixed(d.isSla?0:2)+'</text>';
+             svg1 += '<text x="'+(cx + bw/2)+'" y="'+(y+14)+'" fill="#fff" font-size="9.5" font-family="\'DM Mono\', monospace" font-weight="500" text-anchor="middle">'+v.toFixed(d.isSla?0:2)+'</text>';
           }
           cx += bw;
        });
@@ -698,27 +698,27 @@ let body = HTML_BODY_TEMPLATE;
 
     let lx = leftM;
     labels.forEach((l, j) => {
-       svg1 += '<rect x="'+lx+'" y="'+(h1-10)+'" width="10" height="10" fill="'+colors[j]+'" />';
-       svg1 += '<text x="'+(lx+15)+'" y="'+(h1-1)+'" fill="#cbd5e1" font-size="9">'+l+'</text>';
-       lx += 95;
+       svg1 += '<rect x="'+lx+'" y="'+(h1-10)+'" width="9" height="9" rx="2" fill="'+colors[j]+'" />';
+       svg1 += '<text x="'+(lx+14)+'" y="'+(h1-1)+'" fill="#7d93b8" font-size="9" font-family="\'DM Sans\', sans-serif" font-weight="500">'+l+'</text>';
+       lx += 86;
     });
     svg1 += '</svg>';
 
-    let tableHtml = '<table style="width:100%; text-align:center; color:#cbd5e1; font-size:11px; border-collapse:collapse; margin-top:20px; border:1px solid #334155;">';
-    tableHtml += '<thead><tr style="background:#0f172a; color:#fff; font-weight:bold;">';
-    tableHtml += '<th style="padding:8px; border:1px solid #334155;"></th>';
-    labels.forEach(l => tableHtml += '<th style="padding:8px; border:1px solid #334155;">'+l+'</th>');
-    tableHtml += '<th style="padding:8px; border:1px solid #334155;">Total LT</th></tr></thead><tbody>';
+let tableHtml = '<table style="width:100%; text-align:center; color:var(--text); font-size:10.5px; font-family:\'DM Mono\', monospace; border-collapse:collapse; margin-top:24px;">';
+    tableHtml += '<thead><tr style="background:var(--navy-mid); color:var(--text); font-family:\'DM Sans\', sans-serif; font-size:9px; text-transform:uppercase; letter-spacing:1px;">';
+    tableHtml += '<th style="padding:10px 8px; border-bottom:1px solid var(--line);"></th>';
+    labels.forEach(l => tableHtml += '<th style="padding:10px 8px; border-bottom:1px solid var(--line);">'+l+'</th>');
+    tableHtml += '<th style="padding:10px 8px; border-bottom:1px solid var(--line); color:var(--sky);">Total LT</th></tr></thead><tbody>';
 
     chart1Data.forEach(d => {
-       let rowStyle = d.isSla ? 'background:#1e293b; font-weight:bold; color:#f8fafc;' : '';
+       let rowStyle = d.isSla ? 'background:rgba(216,184,119,0.06); color:var(--gold-soft); font-weight:700;' : 'border-bottom:1px solid var(--line-soft);';
        tableHtml += '<tr style="'+rowStyle+'">';
-       tableHtml += '<td style="padding:8px; border:1px solid #334155; font-weight:bold; text-align:left;">'+d.name+'</td>';
+       tableHtml += '<td style="padding:10px 8px; font-family:\'DM Sans\', sans-serif; font-weight:700; text-align:left;">'+d.name+'</td>';
        d.vals.forEach((v, j) => {
-          let colorStyle = d.isSla ? 'color:'+colors[j]+';' : ''; 
-          tableHtml += '<td style="padding:8px; border:1px solid #334155; '+colorStyle+'">'+v.toFixed(d.isSla?0:2)+'</td>';
+          let colorStyle = d.isSla ? 'color:'+colors[j]+';' : 'color:var(--muted);'; 
+          tableHtml += '<td style="padding:10px 8px; '+colorStyle+'">'+v.toFixed(d.isSla?0:2)+'</td>';
        });
-       tableHtml += '<td style="padding:8px; border:1px solid #334155; font-weight:bold; color:#93c5fd;">'+d.total.toFixed(d.isSla?0:2)+'</td></tr>';
+       tableHtml += '<td style="padding:10px 8px; font-weight:700; color:var(--sky);">'+d.total.toFixed(d.isSla?0:2)+'</td></tr>';
     });
     tableHtml += '</tbody></table>';
 
@@ -728,17 +728,17 @@ let body = HTML_BODY_TEMPLATE;
     let h2 = chart1Data.length * 35 + 30;
     let svg2 = '<svg viewBox="0 0 ' + w1 + ' ' + h2 + '" style="width:100%; height:auto;">';
     svg2 += '<defs><linearGradient id="gradLT" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#0c4a6e;stop-opacity:1" /><stop offset="100%" style="stop-color:#0284c7;stop-opacity:1" /></linearGradient></defs>';
-    for(let i=0; i<=5; i++) {
+for(let i=0; i<=5; i++) {
        let x = leftM + (chartW * (i/5));
        svg2 += '<line x1="'+x+'" y1="0" x2="'+x+'" y2="'+(h2-20)+'" stroke="#ffffff" stroke-opacity="0.1" />';
-       svg2 += '<text x="'+x+'" y="'+(h2-5)+'" fill="#a1a1aa" font-size="10" text-anchor="middle">'+Math.round((maxVal*i)/5)+'</text>';
+       svg2 += '<text x="'+x+'" y="'+(h2-5)+'" fill="#7d93b8" font-size="10" font-family="\'DM Mono\', monospace" text-anchor="middle">'+Math.round((maxVal*i)/5)+'</text>';
     }
     chart1Data.forEach((d, i) => {
        let y = i * 35 + 10;
-       svg2 += '<text x="'+(leftM - 10)+'" y="'+(y+15)+'" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="end">'+d.name+'</text>';
+       svg2 += '<text x="'+(leftM - 10)+'" y="'+(y+15)+'" fill="#eaf1fb" font-size="10.5" font-family="\'DM Sans\', sans-serif" font-weight="700" text-anchor="end">'+d.name+'</text>';
        let bw = (d.total/maxVal) * chartW;
        svg2 += '<rect x="'+leftM+'" y="'+y+'" width="'+bw+'" height="20" fill="url(#gradLT)" rx="2"/>';
-       svg2 += '<text x="'+(leftM + bw - 5)+'" y="'+(y+14)+'" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="end">'+d.total.toFixed(d.isSla?0:2)+'</text>';
+       svg2 += '<text x="'+(leftM + bw - 5)+'" y="'+(y+14)+'" fill="#fff" font-size="10" font-family="\'DM Mono\', monospace" font-weight="500" text-anchor="end">'+d.total.toFixed(d.isSla?0:2)+'</text>';
     });
     svg2 += '</svg>';
     document.getElementById('lt-chart-2').innerHTML = svg2;
@@ -782,10 +782,10 @@ let body = HTML_BODY_TEMPLATE;
     maxEvo = Math.ceil(maxEvo * 1.25);
     
     let svg3 = '<svg viewBox="0 0 '+w3+' '+h3+'" style="width:100%; height:auto;">';
-    for(let i=0; i<=5; i++) {
+for(let i=0; i<=5; i++) {
        let y = h3 - m3.b - (ch3 * (i/5));
        svg3 += '<line x1="'+m3.l+'" y1="'+y+'" x2="'+(w3-m3.r)+'" y2="'+y+'" stroke="#ffffff" stroke-opacity="0.1" />';
-       svg3 += '<text x="'+(m3.l-10)+'" y="'+(y+4)+'" fill="#a1a1aa" font-size="10" text-anchor="end">'+Math.round((maxEvo*i)/5)+'</text>';
+       svg3 += '<text x="'+(m3.l-10)+'" y="'+(y+4)+'" fill="#7d93b8" font-size="10" font-family="\'DM Mono\', monospace" text-anchor="end">'+Math.round((maxEvo*i)/5)+'</text>';
     }
     
     let groupW = cw3 / bKeys.length;
@@ -794,7 +794,7 @@ let body = HTML_BODY_TEMPLATE;
     
     bKeys.forEach((bk, i) => {
        let gx = m3.l + i * groupW;
-       svg3 += '<text x="'+(gx + groupW/2)+'" y="'+(h3-m3.b+15)+'" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">'+bNames[i]+'</text>';
+       svg3 += '<text x="'+(gx + groupW/2)+'" y="'+(h3-m3.b+15)+'" fill="#eaf1fb" font-size="10.5" font-family="\'DM Sans\', sans-serif" font-weight="700" text-anchor="middle">'+bNames[i]+'</text>';
        
        let startX = gx + (groupW - (barW * evoWeeks.length))/2;
        evoWeeks.forEach((wk, j) => {
@@ -803,8 +803,8 @@ let body = HTML_BODY_TEMPLATE;
              let bh = (val/maxEvo) * ch3;
              let bx = startX + j*barW;
              let by = h3 - m3.b - bh;
-             svg3 += '<rect x="'+bx+'" y="'+by+'" width="'+(barW-2)+'" height="'+bh+'" fill="'+evoColors[j]+'" />';
-             svg3 += '<text x="'+(bx + (barW-2)/2)+'" y="'+(by-5)+'" fill="#e2e8f0" font-size="9" font-weight="bold" text-anchor="middle">'+val.toFixed(2)+'</text>';
+             svg3 += '<rect x="'+bx+'" y="'+by+'" width="'+(barW-2)+'" height="'+bh+'" fill="'+evoColors[j]+'" rx="1"/>';
+             svg3 += '<text x="'+(bx + (barW-2)/2)+'" y="'+(by-5)+'" fill="#fff" font-size="9" font-family="\'DM Mono\', monospace" font-weight="500" text-anchor="middle">'+val.toFixed(2)+'</text>';
           }
        });
     });
@@ -813,8 +813,8 @@ let body = HTML_BODY_TEMPLATE;
     let lx3 = m3.l + cw3/2 - (evoWeeks.length * 60)/2;
     evoWeeks.forEach((wk, j) => {
        let shortWk = wk.split("-")[1];
-       svg3 += '<rect x="'+lx3+'" y="'+(h3-10)+'" width="10" height="10" fill="'+evoColors[j]+'" />';
-       svg3 += '<text x="'+(lx3+15)+'" y="'+(h3-1)+'" fill="#cbd5e1" font-size="10">'+shortWk+'</text>';
+       svg3 += '<rect x="'+lx3+'" y="'+(h3-10)+'" width="9" height="9" rx="2" fill="'+evoColors[j]+'" />';
+       svg3 += '<text x="'+(lx3+14)+'" y="'+(h3-1)+'" fill="#7d93b8" font-size="9.5" font-family="\'DM Sans\', sans-serif" font-weight="500">'+shortWk+'</text>';
        lx3 += 60;
     });
     
