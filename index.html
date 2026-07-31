@@ -360,11 +360,11 @@ function extrairRows(matrix, dataCorte, log){
       continue;
     }
 
-    if(!STATUS_VALIDOS.has(status)){
+if(!STATUS_VALIDOS.has(status)){
       skippedStatus++;
       const key = status || '(vazio)';
       ignorados[key] = (ignorados[key]||0)+1;
-      continue;
+      // continue; -> Removido para que todos os status entrem na base
     }
 
     const eta = parseDate(row[COL.eta]);
@@ -505,12 +505,38 @@ function montarHtml(rows, outName){
   const mlabelsJson = JSON.stringify(mlabels);
   const weekRangesJson = JSON.stringify(weekRanges);
 
-  let body = HTML_BODY_TEMPLATE;
+let body = HTML_BODY_TEMPLATE;
+  
+  // 1. Insere o botão "In Brazil" na interface HTML
+  body = body.replace(
+    '<button class="fmbtn" id="mode-delivery" onclick="setFMode(\'delivery\')">Delivery Date</button>',
+    '<button class="fmbtn" id="mode-inbrazil" onclick="setFMode(\'inbrazil\')">In Brazil</button>\n    <button class="fmbtn" id="mode-delivery" onclick="setFMode(\'delivery\')">Delivery Date</button>'
+  );
+  
   body = replaceAllStr(body, '{DATA_RANGE_LABEL}', dataRangeLabel);
   body = replaceAllStr(body, '{LAST_UPDATE_LABEL}', lastUpdateLabel);
   body = replaceAllStr(body, '{WEEK_OPTIONS_HTML}', weekOptionsHtml);
 
-let jsAfterData = JS_AFTER_DATA_TEMPLATE;
+  let jsAfterData = JS_AFTER_DATA_TEMPLATE;
+
+  // 2. Cria a regra no JS para filtrar os status quando "In Brazil" estiver selecionado
+  jsAfterData = jsAfterData.replace(
+    "let rs = ALL_ROWS.filter(r=>r[0]===brand);\n  if(fMode==='delivery'",
+    "let rs = ALL_ROWS.filter(r=>r[0]===brand);\n  if(fMode==='inbrazil') rs = rs.filter(r=>['DELIVERY SCHEDULED','WAITING CARGO ATTENDANCE','WAITING CUSTOMS CLEARANCE','WAITING DELIVERY SCHEDULE','WAITING ID REGISTER','WAITING NF','DELIVERED'].includes(r[4]));\n  if(fMode==='delivery'"
+  );
+
+  // 3. Atualiza as cores/estado do botão novo ao ser clicado
+  jsAfterData = jsAfterData.replace(
+    "document.getElementById('mode-delivery').classList.toggle('active',m==='delivery');\n  if(m==='all'){",
+    "document.getElementById('mode-inbrazil').classList.toggle('active',m==='inbrazil');\n  document.getElementById('mode-delivery').classList.toggle('active',m==='delivery');\n  if(m==='all' || m==='inbrazil'){"
+  );
+
+  // 4. Garante que o filtro "In Brazil" (assim como o "All") desconsidere o recorte de datas
+  jsAfterData = jsAfterData.replace(
+    "function applyFilter(){\n  if(fMode==='all'){",
+    "function applyFilter(){\n  if(fMode==='all' || fMode==='inbrazil'){"
+  );
+
   jsAfterData = jsAfterData.replace("<strong>${total.toLocaleString()}</strong> processes · ", "");
   
   // 1. Ajuste do ON TIME
