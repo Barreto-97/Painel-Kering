@@ -531,13 +531,311 @@ let body = HTML_BODY_TEMPLATE;
     "document.getElementById('mode-inbrazil').classList.toggle('active',m==='inbrazil');\n  document.getElementById('mode-delivery').classList.toggle('active',m==='delivery');\n  if(m==='all' || m==='inbrazil'){"
   );
 
-  // 4. Garante que o filtro "In Brazil" (assim como o "All") desconsidere o recorte de datas
+// 4. Garante que o filtro "In Brazil" (assim como o "All") desconsidere o recorte de datas
   jsAfterData = jsAfterData.replace(
     "function applyFilter(){\n  if(fMode==='all'){",
     "function applyFilter(){\n  if(fMode==='all' || fMode==='inbrazil'){"
   );
 
   jsAfterData = jsAfterData.replace("<strong>${total.toLocaleString()}</strong> processes · ", "");
+
+  // 5. Adiciona a aba "LT Overview" no menu superior
+  body = body.replace(
+    '<div class="tab" data-b="total" onclick="setTab(\'total\',this)"><span class="tdot" style="background:#22d3ee"></span>Total</div>',
+    '<div class="tab" data-b="total" onclick="setTab(\'total\',this)"><span class="tdot" style="background:#22d3ee"></span>Total</div>\n  <div class="tab" data-b="overview" onclick="setTab(\'overview\',this)"><span class="tdot" style="background:#f59e0b"></span>LT Overview</div>'
+  );
+
+  // 6. Constrói o HTML da nova página (Filtros + Cards dos Gráficos)
+  body += `
+  <div class="page" id="page-overview">
+    <div class="sec">Lead Time Overview &amp; SLA Compliance (Delivered Only)</div>
+    
+    <div class="fbar" style="margin-top: 12px; margin-bottom: 16px; border-radius: 8px; border: 1px solid var(--line);">
+      <div style="display:flex; gap:16px; align-items:center;">
+        <label style="font-size:9px; color:#4a6080; font-weight:700; text-transform:uppercase;">Region SLA:</label>
+        <select class="wsel" id="lt-region" onchange="renderLT()">
+          <option value="ALL">All (Default SAO)</option>
+          <option value="SAO">SAO</option>
+          <option value="RIO">RIO</option>
+          <option value="CWB">CWB</option>
+          <option value="BSB">BSB</option>
+          <option value="REC">REC</option>
+        </select>
+        
+        <label style="font-size:9px; color:#4a6080; font-weight:700; text-transform:uppercase;">Delivery Week:</label>
+        <select class="wsel" id="lt-week" onchange="renderLT()">
+          <option value="ALL">All Weeks</option>
+          ${weekOptionsHtml}
+        </select>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card s12" id="lt-card-1">
+        <h2><span class="cdot" style="background:#3b82f6"></span>Lead-timer per milestone</h2>
+        <div id="lt-chart-1" style="min-height: 200px; margin-top:16px; color:var(--muted); font-size:11px;">Loading data...</div>
+      </div>
+      <div class="card s6" id="lt-card-2">
+        <h2><span class="cdot" style="background:#1d4ed8"></span>Total LT</h2>
+        <div id="lt-chart-2" style="min-height: 180px; margin-top:16px; color:var(--muted); font-size:11px;">Loading data...</div>
+      </div>
+      <div class="card s6" id="lt-card-3">
+        <h2><span class="cdot" style="background:#93c5fd"></span>ARR x POD - Evolution</h2>
+        <div id="lt-chart-3" style="min-height: 180px; margin-top:16px; color:var(--muted); font-size:11px;">Loading data...</div>
+      </div>
+    </div>
+  </div>
+  `;
+
+  // 7. Injeta o JS responsável por filtrar e renderizar esses novos dados
+  jsAfterData += `
+  // --- LÓGICA DO LT OVERVIEW ---
+  
+  // Tabela de SLAs por Região (ajuste os valores conforme sua regra de negócios)
+  const SLA_MAP = {
+    'ALL': { inv_gl: 7, gl_arr: 3, arr_id: 2, id_cc: 1, cc_nf: 2, nf_pod: 3, total: 18 },
+    'SAO': { inv_gl: 7, gl_arr: 3, arr_id: 2, id_cc: 1, cc_nf: 2, nf_pod: 3, total: 18 },
+    'RIO': { inv_gl: 7, gl_arr: 3, arr_id: 2, id_cc: 1, cc_nf: 3, nf_pod: 4, total: 20 },
+    'CWB': { inv_gl: 7, gl_arr: 3, arr_id: 2, id_cc: 1, cc_nf: 3, nf_pod: 4, total: 20 },
+    'BSB': { inv_gl: 7, gl_arr: 3, arr_id: 2, id_cc: 1, cc_nf: 3, nf_pod: 4, total: 20 },
+    'REC': { inv_gl: 7, gl_arr: 3, arr_id: 2, id_cc: 1, cc_nf: 6, nf_pod: 6, total: 25 }
+  };
+
+  window.renderLT = function() {
+    const region = document.getElementById('lt-region').value;
+    const week = document.getElementById('lt-week').value;
+    const sla = SLA_MAP[region] || SLA_MAP['ALL'];
+    
+    // 1. Filtrar apenas DELIVERED
+    let baseRows = ALL_ROWS.filter(r => r[4] === 'DELIVERED');
+    
+    // 2. Filtrar por Região (se não for ALL)
+    if(region !== 'ALL') {
+      baseRows = baseRows.filter(r => r[5] === region); // Supondo que a coluna 5 (loc) seja a região
+    }
+    
+    // 3. Lógica de filtro por semana (baseado na Delivery Date)
+    // Aqui você implementará o cruzamento da data com os ranges de WEEK_RANGES_JSON
+    
+// 3. Lógica de filtro por semana (baseado na Delivery Date)
+    if(week !== 'ALL') {
+      const wRange = WEEK_RANGES[week];
+      if(wRange) {
+         const wStart = wRange[0], wEnd = wRange[1];
+         baseRows = baseRows.filter(r => r[16] >= wStart && r[16] <= wEnd);
+      }
+    }
+
+    const bKeys = ['YSL', 'GUCCI', 'BOTTEGA', 'BALENCIAGA'];
+    const bNames = ['Saint Laurent', 'Gucci', 'Bottega Veneta', 'Balenciaga'];
+    const metrics = ['inv_gl', 'gl_arr', 'arr_id', 'id_cc', 'cc_nf', 'nf_pod'];
+    const colors = ['#0c4a6e', '#1d4ed8', '#0284c7', '#64748b', '#94a3b8', '#cbd5e1'];
+    const labels = ['Invoice receipt x GL', 'GL x ARR', 'ARR x DUIMP', 'DUIMP x CC', 'CC x NF ISSUED', 'NF x POD'];
+
+    let bData = {};
+    bKeys.forEach(k => bData[k] = { inv_gl:[], gl_arr:[], arr_id:[], id_cc:[], cc_nf:[], nf_pod:[] });
+
+    // Popular array com os dados para cálculo das médias
+    baseRows.forEach(r => {
+      let bk = r[0];
+      if(!bData[bk]) return;
+      let g = r[17]!=null ? r[17] : 0;
+      let e = r[18]!=null ? r[18] : 0;
+      const m = {
+         inv_gl: r[10],
+         gl_arr: (r[17]!=null || r[18]!=null) ? (g+e) : null,
+         arr_id: r[11],
+         id_cc: r[12],
+         cc_nf: r[13],
+         nf_pod: r[14]
+      };
+      if(m.inv_gl != null) bData[bk].inv_gl.push(m.inv_gl);
+      if(m.gl_arr != null) bData[bk].gl_arr.push(m.gl_arr);
+      if(m.arr_id != null) bData[bk].arr_id.push(m.arr_id);
+      if(m.id_cc != null) bData[bk].id_cc.push(m.id_cc);
+      if(m.cc_nf != null) bData[bk].cc_nf.push(m.cc_nf);
+      if(m.nf_pod != null) bData[bk].nf_pod.push(m.nf_pod);
+    });
+
+    const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
+    
+    let chart1Data = bKeys.map((bk, i) => {
+       let d = bData[bk];
+       let vals = metrics.map(m => avg(d[m]));
+       let total = vals.reduce((a,b)=>a+b,0);
+       return { name: bNames[i], vals: vals, total: total, isSla: false };
+    });
+
+    let slaVals = [sla.inv_gl, sla.gl_arr, sla.arr_id, sla.id_cc, sla.cc_nf, sla.nf_pod];
+    chart1Data.push({ name: 'SLA', vals: slaVals, total: sla.total, isSla: true });
+
+    let maxVal = Math.max.apply(null, chart1Data.map(d=>d.total).concat([1])) * 1.15;
+    let h1 = chart1Data.length * 40 + 40;
+    let w1 = 800, leftM = 120, rightM = 20, chartW = w1 - leftM - rightM;
+
+    // ----- DESENHA CHART 1 (Barras Empilhadas) & TABELA -----
+    let svg1 = '<svg viewBox="0 0 ' + w1 + ' ' + h1 + '" style="width:100%; height:auto; margin-top:10px;">';
+    for(let i=0; i<=5; i++) {
+       let x = leftM + (chartW * (i/5));
+       svg1 += '<line x1="'+x+'" y1="0" x2="'+x+'" y2="'+(h1-40)+'" stroke="#ffffff" stroke-opacity="0.1" />';
+       svg1 += '<text x="'+x+'" y="'+(h1-25)+'" fill="#a1a1aa" font-size="10" text-anchor="middle">'+Math.round((maxVal*i)/5)+'</text>';
+    }
+
+    chart1Data.forEach((d, i) => {
+       let y = i * 40 + 10;
+       svg1 += '<text x="'+(leftM - 10)+'" y="'+(y+15)+'" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="end">'+d.name+'</text>';
+       let cx = leftM;
+       d.vals.forEach((v, j) => {
+          if(v <= 0) return;
+          let bw = (v/maxVal) * chartW;
+          svg1 += '<rect x="'+cx+'" y="'+y+'" width="'+bw+'" height="22" fill="'+colors[j]+'" />';
+          if(bw > 16) {
+             svg1 += '<text x="'+(cx + bw/2)+'" y="'+(y+15)+'" fill="#fff" font-size="9" font-weight="bold" text-anchor="middle">'+v.toFixed(d.isSla?0:2)+'</text>';
+          }
+          cx += bw;
+       });
+    });
+
+    let lx = leftM;
+    labels.forEach((l, j) => {
+       svg1 += '<rect x="'+lx+'" y="'+(h1-10)+'" width="10" height="10" fill="'+colors[j]+'" />';
+       svg1 += '<text x="'+(lx+15)+'" y="'+(h1-1)+'" fill="#cbd5e1" font-size="9">'+l+'</text>';
+       lx += 95;
+    });
+    svg1 += '</svg>';
+
+    let tableHtml = '<table style="width:100%; text-align:center; color:#cbd5e1; font-size:11px; border-collapse:collapse; margin-top:20px; border:1px solid #334155;">';
+    tableHtml += '<thead><tr style="background:#0f172a; color:#fff; font-weight:bold;">';
+    tableHtml += '<th style="padding:8px; border:1px solid #334155;"></th>';
+    labels.forEach(l => tableHtml += '<th style="padding:8px; border:1px solid #334155;">'+l+'</th>');
+    tableHtml += '<th style="padding:8px; border:1px solid #334155;">Total LT</th></tr></thead><tbody>';
+
+    chart1Data.forEach(d => {
+       let rowStyle = d.isSla ? 'background:#1e293b; font-weight:bold; color:#f8fafc;' : '';
+       tableHtml += '<tr style="'+rowStyle+'">';
+       tableHtml += '<td style="padding:8px; border:1px solid #334155; font-weight:bold; text-align:left;">'+d.name+'</td>';
+       d.vals.forEach((v, j) => {
+          let colorStyle = d.isSla ? 'color:'+colors[j]+';' : ''; 
+          tableHtml += '<td style="padding:8px; border:1px solid #334155; '+colorStyle+'">'+v.toFixed(d.isSla?0:2)+'</td>';
+       });
+       tableHtml += '<td style="padding:8px; border:1px solid #334155; font-weight:bold; color:#93c5fd;">'+d.total.toFixed(d.isSla?0:2)+'</td></tr>';
+    });
+    tableHtml += '</tbody></table>';
+
+    document.getElementById('lt-chart-1').innerHTML = svg1 + tableHtml;
+
+    // ----- DESENHA CHART 2 (Total LT) -----
+    let h2 = chart1Data.length * 35 + 30;
+    let svg2 = '<svg viewBox="0 0 ' + w1 + ' ' + h2 + '" style="width:100%; height:auto;">';
+    svg2 += '<defs><linearGradient id="gradLT" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#0c4a6e;stop-opacity:1" /><stop offset="100%" style="stop-color:#0284c7;stop-opacity:1" /></linearGradient></defs>';
+    for(let i=0; i<=5; i++) {
+       let x = leftM + (chartW * (i/5));
+       svg2 += '<line x1="'+x+'" y1="0" x2="'+x+'" y2="'+(h2-20)+'" stroke="#ffffff" stroke-opacity="0.1" />';
+       svg2 += '<text x="'+x+'" y="'+(h2-5)+'" fill="#a1a1aa" font-size="10" text-anchor="middle">'+Math.round((maxVal*i)/5)+'</text>';
+    }
+    chart1Data.forEach((d, i) => {
+       let y = i * 35 + 10;
+       svg2 += '<text x="'+(leftM - 10)+'" y="'+(y+15)+'" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="end">'+d.name+'</text>';
+       let bw = (d.total/maxVal) * chartW;
+       svg2 += '<rect x="'+leftM+'" y="'+y+'" width="'+bw+'" height="20" fill="url(#gradLT)" rx="2"/>';
+       svg2 += '<text x="'+(leftM + bw - 5)+'" y="'+(y+14)+'" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="end">'+d.total.toFixed(d.isSla?0:2)+'</text>';
+    });
+    svg2 += '</svg>';
+    document.getElementById('lt-chart-2').innerHTML = svg2;
+
+    // ----- DESENHA CHART 3 (Evolução ARR x POD) -----
+    const weekKeys = Object.keys(WEEK_RANGES).sort();
+    let targetWeekIdx = weekKeys.length - 1; 
+    if(week !== 'ALL') {
+        let idx = weekKeys.indexOf(week);
+        if(idx !== -1) targetWeekIdx = idx;
+    }
+    let evoWeeks = weekKeys.slice(Math.max(0, targetWeekIdx - 4), targetWeekIdx + 1); // Últimas 5 semanas
+    
+    let evoData = {};
+    bKeys.forEach(bk => evoData[bk] = {});
+    
+    evoWeeks.forEach(wk => {
+        const wRange = WEEK_RANGES[wk];
+        if(!wRange) return;
+        const wStart = wRange[0], wEnd = wRange[1];
+        
+        // Puxar independentemente do filtro atual de semana para gerar a evolução histórica
+        let localBaseRows = ALL_ROWS.filter(r => r[4] === 'DELIVERED');
+        if(region !== 'ALL') localBaseRows = localBaseRows.filter(r => r[5] === region);
+        
+        const wRows = localBaseRows.filter(r => r[16] >= wStart && r[16] <= wEnd);
+        bKeys.forEach(bk => {
+           const brRows = wRows.filter(r => r[0] === bk);
+           const ltVals = brRows.map(r => {
+               let v1=r[11], v2=r[12], v3=r[13], v4=r[14];
+               if(v1==null && v2==null && v3==null && v4==null) return null;
+               return (v1||0)+(v2||0)+(v3||0)+(v4||0); // ARR x POD -> Soma de ARRxID + IDxCC + CCxNF + NFxPOD
+           }).filter(v => v!=null);
+           evoData[bk][wk] = avg(ltVals);
+        });
+    });
+
+    let w3 = 800, h3 = 240, m3 = {t:20, r:20, b:40, l:40}, cw3 = w3 - m3.l - m3.r, ch3 = h3 - m3.t - m3.b;
+    let maxEvo = 1;
+    bKeys.forEach(bk => evoWeeks.forEach(wk => { if(evoData[bk][wk] > maxEvo) maxEvo = evoData[bk][wk]; }));
+    maxEvo = Math.ceil(maxEvo * 1.25);
+    
+    let svg3 = '<svg viewBox="0 0 '+w3+' '+h3+'" style="width:100%; height:auto;">';
+    for(let i=0; i<=5; i++) {
+       let y = h3 - m3.b - (ch3 * (i/5));
+       svg3 += '<line x1="'+m3.l+'" y1="'+y+'" x2="'+(w3-m3.r)+'" y2="'+y+'" stroke="#ffffff" stroke-opacity="0.1" />';
+       svg3 += '<text x="'+(m3.l-10)+'" y="'+(y+4)+'" fill="#a1a1aa" font-size="10" text-anchor="end">'+Math.round((maxEvo*i)/5)+'</text>';
+    }
+    
+    let groupW = cw3 / bKeys.length;
+    let barW = Math.min((groupW - 20) / evoWeeks.length, 25);
+    let evoColors = ['#475569', '#64748b', '#94a3b8', '#cbd5e1', '#f1f5f9'];
+    
+    bKeys.forEach((bk, i) => {
+       let gx = m3.l + i * groupW;
+       svg3 += '<text x="'+(gx + groupW/2)+'" y="'+(h3-m3.b+15)+'" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">'+bNames[i]+'</text>';
+       
+       let startX = gx + (groupW - (barW * evoWeeks.length))/2;
+       evoWeeks.forEach((wk, j) => {
+          let val = evoData[bk][wk];
+          if(val > 0) {
+             let bh = (val/maxEvo) * ch3;
+             let bx = startX + j*barW;
+             let by = h3 - m3.b - bh;
+             svg3 += '<rect x="'+bx+'" y="'+by+'" width="'+(barW-2)+'" height="'+bh+'" fill="'+evoColors[j]+'" />';
+             svg3 += '<text x="'+(bx + (barW-2)/2)+'" y="'+(by-5)+'" fill="#e2e8f0" font-size="9" font-weight="bold" text-anchor="middle">'+val.toFixed(2)+'</text>';
+          }
+       });
+    });
+    
+    // Legenda Gráfico 3
+    let lx3 = m3.l + cw3/2 - (evoWeeks.length * 60)/2;
+    evoWeeks.forEach((wk, j) => {
+       let shortWk = wk.split("-")[1];
+       svg3 += '<rect x="'+lx3+'" y="'+(h3-10)+'" width="10" height="10" fill="'+evoColors[j]+'" />';
+       svg3 += '<text x="'+(lx3+15)+'" y="'+(h3-1)+'" fill="#cbd5e1" font-size="10">'+shortWk+'</text>';
+       lx3 += 60;
+    });
+    
+    svg3 += '</svg>';
+    document.getElementById('lt-chart-3').innerHTML = svg3;
+  };
+
+  // Interceptar a troca de abas para renderizar os gráficos novos na hora certa
+  const originalSetTab = window.setTab;
+  window.setTab = function(name, el) {
+    if(originalSetTab) originalSetTab(name, el);
+    else {
+      // Fallback caso a função original falhe
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('page-' + name).classList.add('active');
+      el.classList.add('active');
+    }
+    if(name === 'overview') window.renderLT();
+  };
+  `;
   
   // 1. Ajuste do ON TIME
   jsAfterData = replaceAllStr(jsAfterData, 
