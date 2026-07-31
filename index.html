@@ -510,8 +510,27 @@ function montarHtml(rows, outName){
   body = replaceAllStr(body, '{LAST_UPDATE_LABEL}', lastUpdateLabel);
   body = replaceAllStr(body, '{WEEK_OPTIONS_HTML}', weekOptionsHtml);
 
-  let jsAfterData = JS_AFTER_DATA_TEMPLATE;
+let jsAfterData = JS_AFTER_DATA_TEMPLATE;
   jsAfterData = jsAfterData.replace("<strong>${total.toLocaleString()}</strong> processes · ", "");
+  
+  // 1. Ajuste do ON TIME
+  jsAfterData = replaceAllStr(jsAfterData, 
+    'ON TIME &nbsp;<strong>${d.transit.toLocaleString()}</strong>', 
+    'ON TIME - &nbsp;<strong>${d.transit.toLocaleString()} Faturas</strong>&nbsp;<span style="opacity:.65;font-weight:600">(${(d.ships - (hasD ? d.del_list.length : 0)).toLocaleString()} shipments)</span>'
+  );
+  
+  // 2. Ajuste do DELAYED
+  jsAfterData = replaceAllStr(jsAfterData, 
+    'DELAYED &nbsp;<strong>${totD}</strong>', 
+    'DELAYED - &nbsp;<strong>${totD}</strong>'
+  );
+  
+  // 3. Ajuste do Total
+  jsAfterData = replaceAllStr(jsAfterData, 
+    'Total: <strong style="color:#dbeafe">${d.inv.toLocaleString()}</strong>', 
+    'Total: <strong style="color:#dbeafe">${d.inv.toLocaleString()}</strong> - faturas (${d.ships.toLocaleString()} shipments)'
+  );
+
   jsAfterData = replaceAllStr(jsAfterData, '{WEEK_RANGES_JSON}', weekRangesJson);
   jsAfterData = replaceAllStr(jsAfterData, '{MONTHS_JSON}', monthsJson);
   jsAfterData = replaceAllStr(jsAfterData, '{MLABELS_JSON}', mlabelsJson);
