@@ -277,10 +277,26 @@ const JS_AFTER_DATA_TEMPLATE = b64ToUtf8(JS_B64);
 
 const COL = {
   shipment:0, invoice:1, boxes:2, items:3, status:4,
-  loc:5, channel:6, sla_st:7, inv_receipt:8, eta:11,
-  lt_ig:17, lt_ge:18, lt_ea:19, lt_ai:20, lt_ic:21, lt_cn:23, lt_np:24, brand:25, delivery:16,
-  gl_date:9, id_reg_date:12, cc_date:13, danfe_date:15
+  loc:5, channel:6, sla_st:7, inv_receipt:8, gl_date:9, etd:10, eta:11,
+  id_reg_date:12, cc_date:13, danfe_date:15, delivery:16,
+  lt_ig:17, lt_ge:18, lt_ea:19, lt_ai:20, lt_ic:21, lt_cn:23, lt_np:24, brand:25
 };
+
+// Nova função para calcular dias úteis entre duas datas
+function getWorkingDays(startDate, endDate) {
+  if (!startDate || !endDate) return null;
+  let start = new Date(startDate.getTime());
+  let end = new Date(endDate.getTime());
+  if (start > end) return 0; // Previne lead times negativos
+  
+  let days = 0;
+  while (start < end) {
+    start.setUTCDate(start.getUTCDate() + 1);
+    let day = start.getUTCDay();
+    if (day !== 0 && day !== 6) days++; // 0 = Domingo, 6 = Sábado
+  }
+  return days;
+}
 
 const STATUS_VALIDOS = new Set([
   "DELIVERY SCHEDULED","WAITING CARGO ATTENDANCE","WAITING CUSTOMS CLEARANCE",
@@ -367,6 +383,7 @@ if(!STATUS_VALIDOS.has(status)){
       // continue; -> Removido para que todos os status entrem na base
     }
 
+const etd = parseDate(row[COL.etd]); // <-- Lendo ETD
     const eta = parseDate(row[COL.eta]);
     const delivery = parseDate(row[COL.delivery]);
     const glDate = parseDate(row[COL.gl_date]);
@@ -382,16 +399,22 @@ if(!STATUS_VALIDOS.has(status)){
     const sla_st = cleanStr(row[COL.sla_st]);
     const brand = cleanStr(row[COL.brand]).toUpperCase();
 
+    // Helper para facilitar a chamada do cálculo no Array
+    const calcWD = (d1, d2) => getWorkingDays(d1, d2);
+
     rowsOut.push([
       brand, ship, boxes, items, status, loc, channel, sla_st,
       fmtDateUTC(invRec),
       eta ? fmtDateUTC(eta) : null,
-      valLt(row[COL.lt_ig]), valLt(row[COL.lt_ai]), valLt(row[COL.lt_ic]),
-      valLt(row[COL.lt_cn]), valLt(row[COL.lt_np]),
+      calcWD(invRec, glDate)      ?? valLt(row[COL.lt_ig]),
+      calcWD(eta, idRegDate)      ?? valLt(row[COL.lt_ai]),
+      calcWD(idRegDate, ccDate)   ?? valLt(row[COL.lt_ic]),
+      calcWD(ccDate, danfeDate)   ?? valLt(row[COL.lt_cn]),
+      calcWD(danfeDate, delivery) ?? valLt(row[COL.lt_np]),
       inv,
       delivery ? fmtDateUTC(delivery) : null,
-      valLt(row[COL.lt_ge]),
-      valLt(row[COL.lt_ea]),
+      calcWD(glDate, etd)         ?? valLt(row[COL.lt_ge]),
+      calcWD(etd, eta)            ?? valLt(row[COL.lt_ea]),
       glDate ? fmtDateUTC(glDate) : null,
       idRegDate ? fmtDateUTC(idRegDate) : null,
       ccDate ? fmtDateUTC(ccDate) : null,
