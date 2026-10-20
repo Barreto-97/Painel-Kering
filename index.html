@@ -367,7 +367,9 @@ function extrairRows(matrix, dataCorte, log){
     const row = matrix[i];
     if(!row || row.every(c => c == null || c === '')) continue;
 
-    const statusRaw = cleanStr(row[COL.status]);
+    let statusRaw = cleanStr(row[COL.status]);
+    // Remove o prefixo de números e ponto (ex: "12.DELIVERED" vira "DELIVERED")
+    statusRaw = statusRaw.replace(/^\d+\.\s*/, '').trim();
     const status = statusRaw.toUpperCase();
     const invRec = parseDate(row[COL.inv_receipt]);
 
@@ -680,7 +682,8 @@ btnGen.addEventListener('click', async ()=>{
     for(let i=1;i<matrix.length;i++){
       const row = matrix[i];
       if(!row || row.every(c=>c==null||c==='')) continue;
-      const statusRaw = cleanStr(row[COL.status]).toUpperCase();
+      let statusRaw = cleanStr(row[COL.status]).toUpperCase();
+      statusRaw = statusRaw.replace(/^\d+\.\s*/, '').trim();
       const invRec = parseDate(row[COL.inv_receipt]);
       if(!invRec || invRec.getTime() < dataCorte.getTime()){ skippedData++; continue; }
       if(!STATUS_VALIDOS.has(statusRaw)){ skippedStatus++; }
